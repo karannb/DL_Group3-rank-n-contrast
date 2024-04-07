@@ -1,37 +1,70 @@
 import os
-from rdkit import Chem
-import pandas as pd
+import pickle
+from deepchem.molnet import load_delaney
+from torch_geometric.utils import from_smiles
 
 import torch
 from torch.utils.data import Dataset
 
-class QM7(Dataset):
+class ESOL(Dataset):
 
-    def __init__(self, root):
+    def __init__(self, root, clip=False):
 
-        super(QM7, self).__init__()
-        label_path = os.path.join(root, 'gdb7.sdf.csv')
-        self.labels = pd.read_csv(label_path, index_col=None)
-        mol_path = os.path.join(root, 'gdb7.sdf')
-        self.mols = Chem.SupplierFromFilename(mol_path)
+        super(ESOL, self).__init__()
+        _, self.data, _ = load_delaney(splitter='random',
+                                       data_dir=root,
+                                       save_dir=root,
+                                       reload=False)
+        
+        # Convert from smiles to molecule
+        train, valid, test = self.data
+        train_mols = []
+        for mol in train.ids:
+            train_mols.append(from_smiles(mol))
+        valid_mols = []
+        for mol in valid.ids:
+            valid_mols.append(from_smiles(mol))
+        test_mols = []
+        for mol in test.ids:
+            test_mols.append(from_smiles(mol))
 
-        print('Number of molecules:', len(self.mols))
+        self.data_dict = {
+            'train': (train_mols, train.y),
+            'valid': (valid_mols, valid.y),
+            'test': (test_mols, test.y)
+        }
+
+        self.mode = 'train'
+        print('''Loaded ESOL dataset:
+              - train size: {}
+              - valid size: {}
+              - test size: {}'''.format(len(self.data_dict['train'][0]), len(self.data_dict['valid'][0]), len(self.data_dict['test'][0])))
 
     def __len__(self):
 
-        return len(self.mols)
+       assert self.mode == 'train' or self.mode == 'valid' or self.mode == 'test', 'Invalid mode, possible values are train, valid, test'
+
+       return len(self.data_dict[self.mode][0])
     
     def __getitem__(self, idx):
 
-        mol = self.mols[idx]
-        label = self.labels.iloc[idx]
-
+        assert self.mode == 'train' or self.mode == 'valid' or self.mode == 'test', 'Invalid mode, possible values are train, valid, test'
+        
+        mol = self.data_dict[self.mode][0][idx]
+        label = self.data_dict[self.mode][1][idx]
         return mol, torch.tensor(label, dtype=torch.float32)
+    
+    def train(self):
+        self.mode = 'train'
+
+    def eval(self):
+        self.mode = 'valid'
+
+    def test(self):
+        self.mode = 'test'
 
 if __name__ == '__main__':
 
-    qm7 = QM7('data/gdb7')
-    mol0, lbl0 = qm7[0]
-    print([x for x in dir(mol0) if '__' not in x])
-    for atom in mol0.GetAtoms():
-        print(atom.GetSymbol(), atom.GetIdx())
+    esol = ESOL('data/')
+    mol0, lbl0 = esol[1]
+    print(mol0)
