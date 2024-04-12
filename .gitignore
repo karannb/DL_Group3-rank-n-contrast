@@ -1,5 +1,5 @@
 # User-defined
-data/
+CNN/data/AgeDB/
 *temp*
 
 # Byte-compiled / optimized / DLL files
