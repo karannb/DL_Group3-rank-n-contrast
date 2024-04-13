@@ -7,22 +7,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, global_mean_pool
 
+class ModelArgs:
+    in_channels = 9
+    out_channels = 128
+    hidden_channels = 64
+    num_layers = 3
+    dropout = 0.5
+
 class GCNEncoder(nn.Module):
 
-    def __init__(self, in_channels=9, out_channels=128, hidden_channels=64, num_layers=1, dropout=0.5):
+    def __init__(self, args : ModelArgs):
         super(GCNEncoder, self).__init__()
         self.convs = nn.ModuleList()
         self.bns = nn.ModuleList()
-        self.num_layers = num_layers
+        self.num_layers = args.num_layers
 
-        self.convs.append(GCNConv(in_channels, hidden_channels, normalize=False))
-        self.bns.append(nn.BatchNorm1d(hidden_channels))
-        for _ in range(num_layers - 2):
-            self.convs.append(GCNConv(hidden_channels, hidden_channels, normalize=False))
-            self.bns.append(nn.BatchNorm1d(hidden_channels))
-        self.convs.append(GCNConv(hidden_channels, out_channels, normalize=False))
+        self.convs.append(GCNConv(args.in_channels, args.hidden_channels, normalize=False))
+        self.bns.append(nn.BatchNorm1d(args.hidden_channels))
+        for _ in range(args.num_layers - 2):
+            self.convs.append(GCNConv(args.hidden_channels, args.hidden_channels, normalize=False))
+            self.bns.append(nn.BatchNorm1d(args.hidden_channels))
+        self.convs.append(GCNConv(args.hidden_channels, args.out_channels, normalize=False))
 
-        self.dropout = dropout
+        self.dropout = args.dropout
 
     def forward(self, mol):
 
@@ -39,12 +46,12 @@ class GCNEncoder(nn.Module):
     
 class GCNMLP(GCNEncoder):
     
-        def __init__(self, in_channels=9, out_channels=128, hidden_channels=64, num_layers=3, dropout=0.5):
-            super(GCNMLP, self).__init__(in_channels, out_channels, hidden_channels, num_layers, dropout)
+        def __init__(self, args : ModelArgs):
+            super(GCNMLP, self).__init__(args)
             self.mlp = nn.Sequential(
-                nn.Linear(out_channels, hidden_channels),
+                nn.Linear(args.out_channels, args.hidden_channels),
                 nn.ReLU(),
-                nn.Linear(hidden_channels, 1)
+                nn.Linear(args.hidden_channels, 1)
             )
     
         def forward(self, mol):
