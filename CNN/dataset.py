@@ -7,7 +7,7 @@ from torch.utils import data
 
 class AgeDB(data.Dataset):
     def __init__(self, data_folder, transform=None, split='train'):
-        df = pd.read_csv(f'./data/agedb.csv')
+        df = pd.read_csv(f'./CNN/data/agedb.csv')
         self.df = df[df['split'] == split]
         self.split = split
         self.data_folder = data_folder

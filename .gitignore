@@ -1,5 +1,6 @@
 # User-defined
 data/
+save/
 *temp*
 
 # Byte-compiled / optimized / DLL files

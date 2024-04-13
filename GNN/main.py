@@ -1,6 +1,6 @@
 from loss import RnCLoss
 from dataset import ESOL
-from models.GNN import GCNEncoder, GCNMLP
+from model import GCNEncoder, GCNMLP
 
 import torch
 import torch.nn as nn
