@@ -32,12 +32,14 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet18', choices=['resnet18', 'resnet50'])
     parser.add_argument('--resume', type=str, default='', help='resume ckpt path')
     parser.add_argument('--aug', type=str, default='crop,flip,color,grayscale', help='augmentations')
+    
+    parser.add_argument('--loss', type=str, default='L1', choices=['L1', 'L2', 'huber'], help='loss function to train')
 
     opt = parser.parse_args()
 
     opt.model_path = './save/{}_models'.format(opt.dataset)
-    opt.model_name = 'L1_{}_{}_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_aug_{}_trial_{}'. \
-        format(opt.dataset, opt.model, opt.epochs, opt.learning_rate, opt.lr_decay_rate, opt.weight_decay, opt.momentum,
+    opt.model_name = '{}_{}_{}_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_aug_{}_trial_{}'. \
+        format(opt.loss,opt.dataset, opt.model, opt.epochs, opt.learning_rate, opt.lr_decay_rate, opt.weight_decay, opt.momentum,
                opt.batch_size, opt.aug, opt.trial)
     if len(opt.resume):
         opt.model_name = opt.resume.split('/')[-2]
@@ -92,7 +94,14 @@ def set_loader(opt):
 
 def set_model(opt):
     model = SupResNet(name=opt.model, num_classes=get_label_dim(opt.dataset))
-    criterion = torch.nn.L1Loss()
+    if opt.loss == 'L1':
+        criterion = torch.nn.L1Loss()
+    elif opt.loss == 'L2':
+        criterion = torch.nn.MSELoss()
+    elif opt.loss == 'huber':
+        criterion = torch.nn.SmoothL1Loss()
+    else:
+        raise ValueError(f"Loss function {opt.loss} not supported!")
 
     if torch.cuda.is_available():
         if torch.cuda.device_count() > 1:
@@ -144,12 +153,19 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             sys.stdout.flush()
 
 
-def validate(val_loader, model):
+def validate(val_loader, model, opt):
     model.eval()
 
+    if opt.loss == 'L1':
+        criterion = torch.nn.L1Loss()
+    elif opt.loss == 'L2':
+        criterion = torch.nn.MSELoss()
+    elif opt.loss == 'huber':
+        criterion = torch.nn.SmoothL1Loss()
+    else:
+        raise ValueError(f"Loss function {opt.loss} not supported!")
     losses = AverageMeter()
-    criterion_l1 = torch.nn.L1Loss()
-
+    
     with torch.no_grad():
         for idx, (images, labels) in enumerate(val_loader):
             images = images.cuda()
@@ -158,8 +174,8 @@ def validate(val_loader, model):
 
             output = model(images)
 
-            loss_l1 = criterion_l1(output, labels)
-            losses.update(loss_l1.item(), bsz)
+            loss = criterion(output, labels)
+            losses.update(loss.item(), bsz)
 
     return losses.avg
 
@@ -194,8 +210,8 @@ def main():
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, opt)
 
-        valid_error = validate(val_loader, model)
-        print('Val L1 error: {:.3f}'.format(valid_error))
+        valid_error = validate(val_loader, model, opt)
+        print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
 
         is_best = valid_error < best_error
         best_error = min(valid_error, best_error)
@@ -223,8 +239,8 @@ def main():
     checkpoint = torch.load(save_file_best)
     model.load_state_dict(checkpoint['model'])
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}")
-    test_loss = validate(test_loader, model)
-    to_print = 'Test L1 error: {:.3f}'.format(test_loss)
+    test_loss = validate(test_loader, model, opt)
+    to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
     print(to_print)
 
 

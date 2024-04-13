@@ -27,6 +27,11 @@ class FeatureSimilarity(nn.Module):
         # output: [bs, bs]
         if self.similarity_type == 'l2':
             return - (features[:, None, :] - features[None, :, :]).norm(2, dim=-1)
+        elif self.similarity_type == 'l1':
+            return - (features[:, None, :] - features[None, :, :]).norm(1, dim=-1)
+        elif self.similarity_type == 'cosine':
+            features_normalized = F.normalize(features, p=2, dim=-1)
+            return torch.matmul(features_normalized[:, None, :], features_normalized[None, :, :]).squeeze()
         else:
             raise ValueError(self.similarity_type)
 

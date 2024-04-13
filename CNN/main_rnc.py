@@ -37,7 +37,7 @@ def parse_option():
     # RnCLoss Parameters
     parser.add_argument('--temp', type=float, default=2, help='temperature')
     parser.add_argument('--label_diff', type=str, default='l1', choices=['l1'], help='label distance function')
-    parser.add_argument('--feature_sim', type=str, default='l2', choices=['l2'], help='feature similarity function')
+    parser.add_argument('--feature_sim', type=str, default='l2', choices=['l2', 'l1', 'cosine'], help='feature similarity function')
 
     opt = parser.parse_args()
 

@@ -33,11 +33,13 @@ def parse_option():
     parser.add_argument('--aug', type=str, default='crop,flip,color,grayscale', help='augmentations')
 
     parser.add_argument('--ckpt', type=str, default='', help='path to the trained encoder')
+    
+    parser.add_argument('--loss', type=str, default='L1', choices=['L1', 'L2', 'huber'], help='loss function to train')
 
     opt = parser.parse_args()
 
-    opt.model_name = 'Regressor_{}_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_trial_{}'. \
-        format(opt.dataset, opt.epochs, opt.learning_rate, opt.lr_decay_rate,
+    opt.model_name = 'Regressor_{}_{}_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_trial_{}'. \
+        format(opt.loss, opt.dataset, opt.epochs, opt.learning_rate, opt.lr_decay_rate,
                opt.weight_decay, opt.momentum, opt.batch_size, opt.trial)
     if len(opt.resume):
         opt.model_name = opt.resume.split('/')[-1][:-len('_last.pth')]
@@ -88,8 +90,15 @@ def set_loader(opt):
 
 def set_model(opt):
     model = Encoder(name=opt.model)
-    criterion = torch.nn.L1Loss()
-
+    if opt.loss == 'L1':
+        criterion = torch.nn.L1Loss()
+    elif opt.loss == 'MSE':
+        criterion = torch.nn.MSELoss()
+    elif opt.loss == 'huber':
+        criterion = torch.nn.SmoothL1Loss()
+    else:
+        raise ValueError(f"Loss function {opt.loss} not supported!")
+    
     dim_in = model_dict[opt.model][1]
     dim_out = get_label_dim(opt.dataset)
     regressor = torch.nn.Linear(dim_in, dim_out)
@@ -155,13 +164,22 @@ def train(train_loader, model, regressor, criterion, optimizer, epoch, opt):
             sys.stdout.flush()
 
 
-def validate(val_loader, model, regressor):
+def validate(val_loader, model, regressor, opt):
     model.eval()
     regressor.eval()
 
     losses = AverageMeter()
-    criterion_l1 = torch.nn.L1Loss()
-
+    if opt.loss == 'L1':
+        criterion = torch.nn.L1Loss()
+    elif opt.loss == 'MSE':
+        criterion = torch.nn.MSELoss()
+    elif opt.loss == 'huber':
+        criterion = torch.nn.SmoothL1Loss()
+    else:
+        raise ValueError(f"Loss function {opt.loss} not supported!")
+    
+    
+    
     with torch.no_grad():
         for idx, (images, labels) in enumerate(val_loader):
             images = images.cuda()
@@ -171,8 +189,8 @@ def validate(val_loader, model, regressor):
             features = model(images)
             output = regressor(features)
 
-            loss_l1 = criterion_l1(output, labels)
-            losses.update(loss_l1.item(), bsz)
+            loss = criterion(output, labels)
+            losses.update(loss.item(), bsz)
 
     return losses.avg
 
@@ -209,8 +227,8 @@ def main():
         # train for one epoch
         train(train_loader, model, regressor, criterion, optimizer, epoch, opt)
 
-        valid_error = validate(val_loader, model, regressor)
-        print('Val L1 error: {:.3f}'.format(valid_error))
+        valid_error = validate(val_loader, model, regressor, opt)
+        print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
 
         is_best = valid_error < best_error
         best_error = min(valid_error, best_error)
@@ -234,8 +252,8 @@ def main():
     checkpoint = torch.load(save_file_best)
     regressor.load_state_dict(checkpoint['state_dict'])
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}")
-    test_loss = validate(test_loader, model, regressor)
-    to_print = 'Test L1 error: {:.3f}'.format(test_loss)
+    test_loss = validate(test_loader, model, regressor,opt)
+    to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
     print(to_print)
 
 
