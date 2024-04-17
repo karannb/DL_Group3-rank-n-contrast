@@ -229,15 +229,15 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             )
             print(to_print)
             sys.stdout.flush()
-    wandb.log(
-        {
-            'train_loss': losses.avg,
-        },
-        step=epoch)
+    wandb.log({
+        'train_loss': losses.avg,
+    }, step=epoch)
 
 
 def main():
+    seed_all(42)
     opt = parse_option()
+    
     with open('../.secrets/api.yaml', 'r') as f:
         secrets = yaml.safe_load(f)
         API_key = secrets['api_key']
@@ -246,8 +246,7 @@ def main():
     wandb.login(key=API_key)
 
     # Start wandb run
-    wandb.init(project="dl-project", 
-               config=opt)
+    wandb.init(project="dl-project", config=opt)
 
     # build data loader
     train_loader = set_loader(opt)
