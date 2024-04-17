@@ -7,6 +7,8 @@ import time
 from model import SupResNet
 from dataset import *
 from utils import *
+import wandb
+import yaml
 
 print = logging.info
 
@@ -151,6 +153,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             )
             print(to_print)
             sys.stdout.flush()
+    wandb.log({
+        'train_loss': losses.avg
+    }, step=epoch)
 
 
 def validate(val_loader, model, opt):
@@ -182,6 +187,16 @@ def validate(val_loader, model, opt):
 
 def main():
     opt = parse_option()
+    
+    # set the mannual seed
+    seed_all(42)
+    
+    with open("../.secrets/api.yaml",'r') as f:
+        secrets = yaml.safe_open(f)
+        api_key = secrets['api_key']
+        
+    wandb.login(key=api_key)
+    
 
     # build data loader
     train_loader, val_loader, test_loader = set_loader(opt)
