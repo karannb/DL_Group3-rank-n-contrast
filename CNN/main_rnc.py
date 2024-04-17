@@ -8,6 +8,8 @@ from dataset import *
 from utils import *
 from model import Encoder
 from loss import RnCLoss
+import wandb
+import yaml
 
 print = logging.info
 
@@ -144,9 +146,28 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             print(to_print)
             sys.stdout.flush()
 
+    wandb.log(
+        {
+            'train_loss': losses.avg,
+        },
+        step=epoch)
 
 def main():
     opt = parse_option()
+    
+    # set the mannual seed
+    seed_all(42)
+    
+    # Load API key
+    with open('../.secrets/api.yaml', 'r') as f:
+        secrets = yaml.safe_load(f)
+        API_key = secrets['api_key']
+
+    # Wandb login
+    wandb.login(key=API_key)
+    
+    # Setup wandb
+    wandb.init(project='dl-project', config=opt)
 
     # build data loader
     train_loader = set_loader(opt)
@@ -183,6 +204,9 @@ def main():
     # save the last model
     save_file = os.path.join(opt.save_folder, 'last.pth')
     save_model(model, optimizer, opt, opt.epochs, save_file)
+    
+    # Finish wandb run
+    wandb.finish()
 
 
 if __name__ == '__main__':

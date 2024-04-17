@@ -7,6 +7,8 @@ import time
 from model import Encoder, model_dict
 from dataset import *
 from utils import *
+import wandb
+import yaml
 
 print = logging.info
 
@@ -163,6 +165,11 @@ def train(train_loader, model, regressor, criterion, optimizer, epoch, opt):
                 data_time=data_time, loss=losses))
             sys.stdout.flush()
 
+    wandb.log(
+        {
+            'train_loss': losses.avg,
+        },
+        step=epoch)
 
 def validate(val_loader, model, regressor, opt):
     model.eval()
@@ -197,7 +204,21 @@ def validate(val_loader, model, regressor, opt):
 
 def main():
     opt = parse_option()
+    
+    # set the mannual seed
+    seed_all(42)
+    
+    # Load API key
+    with open('../.secrets/api.yaml', 'r') as f:
+        secrets = yaml.safe_load(f)
+        API_key = secrets['api_key']
 
+    # Wandb login
+    wandb.login(key=API_key)
+    
+    # Setup wandb
+    wandb.init(project='dl-project', config=opt)
+    
     # build data loader
     train_loader, val_loader, test_loader = set_loader(opt)
 
@@ -229,6 +250,12 @@ def main():
 
         valid_error = validate(val_loader, model, regressor, opt)
         print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
+        
+        wandb.log(
+            {
+                'valid_loss': valid_error,
+            },
+            step=epoch)
 
         is_best = valid_error < best_error
         best_error = min(valid_error, best_error)
@@ -256,6 +283,8 @@ def main():
     to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
     print(to_print)
 
+    # Finish wandb run
+    wandb.finish()
 
 if __name__ == '__main__':
     main()
