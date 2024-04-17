@@ -2,7 +2,8 @@
 data/
 save/
 *temp*
-.secrets
+.secrets/
+wandb/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

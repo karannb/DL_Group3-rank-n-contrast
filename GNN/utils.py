@@ -1,5 +1,6 @@
 import math
 import torch
+import random
 
 class AverageMeter(object):
     def __init__(self):
@@ -40,3 +41,22 @@ def set_optimizer(opt, model):
                                  weight_decay=opt.weight_decay) #momentum=opt.momentum,
 
     return optimizer
+
+def seed_all(seed: int):
+    """Setup random state from a seed for `torch`, `random` and optionally `numpy` (if can be imported).
+
+    Args:
+        seed: Random state seed
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    try:
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:
+        pass

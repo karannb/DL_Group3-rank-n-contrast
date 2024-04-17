@@ -241,11 +241,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             )
             print(to_print)
             sys.stdout.flush()
-    wandb.log(
-        {
-            'train_loss': losses.avg,
-        },
-        step=epoch)
+    wandb.log({
+        'train_loss': losses.avg,
+    }, step=epoch)
 
 
 def validate(val_loader, model):
@@ -274,8 +272,9 @@ def validate(val_loader, model):
 
 
 def main():
+    seed_all(42)
     opt = parse_option()
-    
+
     # Load API key
     with open('../.secrets/api.yaml', 'r') as f:
         secrets = yaml.safe_load(f)
@@ -283,7 +282,7 @@ def main():
 
     # Wandb login
     wandb.login(key=API_key)
-    
+
     # Setup wandb
     wandb.init(project='dl-project', config=opt)
 
@@ -314,15 +313,14 @@ def main():
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, opt)
 
-        valid_error, valid_rmse, valid_mae = validate(val_loader, model)
+        valid_error, valid_rmse = validate(val_loader, model)
         print('Val L1 error: {:.3f}'.format(valid_error))
         print('Val RMSE error: {:.3f}'.format(valid_rmse))
-        wandb.log(
-            {
-                'valid_loss': valid_error,
-                'valid_rmse': valid_rmse
-            },
-            step=epoch)
+        wandb.log({
+            'valid_loss': valid_error,
+            'valid_rmse': valid_rmse
+        },
+                  step=epoch)
 
         is_best = valid_error < best_error
         best_error = min(valid_error, best_error)
@@ -356,7 +354,7 @@ def main():
     test_loss, test_rmse, test_mae = validate(test_loader, model)
     print(f"Test L1 error: {test_loss:.3f}")
     print(f"Test RMSE error: {test_rmse:.3f}")
-    
+
     # Finish wandb run
     wandb.finish()
 

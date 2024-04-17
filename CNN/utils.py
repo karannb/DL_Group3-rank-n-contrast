@@ -113,13 +113,6 @@ def seed_all(seed: int):
         torch.cuda.manual_seed_all(seed)
 
     try:
-        import torch_xla.core.xla_model as xm
-
-        xm.set_rng_state(seed)
-    except ImportError:
-        pass
-
-    try:
         import numpy as np
 
         np.random.seed(seed)
