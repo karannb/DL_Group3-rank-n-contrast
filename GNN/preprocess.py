@@ -75,7 +75,7 @@ def preprocess(lib='pyg'):
         mean /= len(train_inds)
         for i in train_inds:
             mol = data[i]
-            std += (mol.y[0].item() - mean)**2
+            std += (mol.y.item() - mean)**2
         std = (std/len(train_inds))**0.5
 
         paths = []
@@ -88,7 +88,7 @@ def preprocess(lib='pyg'):
             with open(f'data/ESOL/mol_{count}', 'wb') as f:
                 pickle.dump(mol, f)
             paths.append(f'data/ESOL/mol_{count}')
-            labels.append((mol.y[0].item() - mean)/std)
+            labels.append((mol.y.item() - mean)/std)
             split.append("train")
             count += 1
         
@@ -97,7 +97,7 @@ def preprocess(lib='pyg'):
             with open(f'data/ESOL/mol_{count}', 'wb') as f:
                 pickle.dump(mol, f)
             paths.append(f'data/ESOL/mol_{count}')
-            labels.append((mol.y[0].item() - mean)/std)
+            labels.append((mol.y.item() - mean)/std)
             split.append("valid")
             count += 1
 
@@ -106,7 +106,7 @@ def preprocess(lib='pyg'):
             with open(f'data/ESOL/mol_{count}', 'wb') as f:
                 pickle.dump(mol, f)
             paths.append(f'data/ESOL/mol_{count}')
-            labels.append((mol.y[0].item() - mean)/std)
+            labels.append((mol.y.item() - mean)/std)
             split.append("test")
             count += 1
 
