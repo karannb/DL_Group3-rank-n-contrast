@@ -36,7 +36,7 @@ def save_model(model, optimizer, opt, epoch, save_file):
     del state
 
 def set_optimizer(opt, model):
-    optimizer = torch.optim.SGD(model.parameters(), lr=opt.learning_rate,
-                                momentum=opt.momentum, weight_decay=opt.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate,
+                                 weight_decay=opt.weight_decay) #momentum=opt.momentum,
 
     return optimizer
