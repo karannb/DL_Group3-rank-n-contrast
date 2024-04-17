@@ -16,7 +16,7 @@ class LabelDifference(nn.Module):
         # labels: [bs, label_dim]
         # output: [bs, bs]
         if self.distance_type == 'l1':
-            return torch.abs(labels[:, None, :] - labels[None, :, :]).sum(dim=-1)
+            return torch.abs(labels[:, None] - labels[None, :])
         else:
             raise ValueError(self.distance_type)
 
@@ -36,28 +36,33 @@ class FeatureSimilarity(nn.Module):
 
 
 class RnCLoss(nn.Module):
-    def __init__(self, temperature=2, label_diff='l1', feature_sim='l2'):
+    def __init__(self, temperature=2, label_diff='l1', feature_sim='l2', augmentation=True):
         super(RnCLoss, self).__init__()
         self.t = temperature
+        self.augmentation = augmentation
         self.label_diff_fn = LabelDifference(label_diff)
         self.feature_sim_fn = FeatureSimilarity(feature_sim)
 
     def forward(self, features, labels):
-        # features: [bs, 2, feat_dim]
+        # features: [bs, 2, feat_dim] if augmentation, else [bs, feat_dim]
         # labels: [bs, label_dim]
-
-        features = torch.cat([features[:, 0], features[:, 1]], dim=0)  # [2bs, feat_dim]
-        labels = labels.repeat(2, 1)  # [2bs, label_dim]
+        
+        if self.augmentation:
+            features = torch.cat([features[:, 0], features[:, 1]], dim=0)  # [2bs, feat_dim]
+            labels = labels.repeat(2, 1)  # [2bs, label_dim]
+        else:
+            pass
 
         label_diffs = self.label_diff_fn(labels)
         logits = self.feature_sim_fn(features).div(self.t)
+        # stable softmax
         logits_max, _ = torch.max(logits, dim=1, keepdim=True)
         logits -= logits_max.detach()
         exp_logits = logits.exp()
 
-        n = logits.shape[0]  # n = 2bs
+        n = logits.shape[0]  # n = 2bs if augmentation else bs
 
-        # remove diagonal
+        # remove diagonal, needed for both augmentation and non-augmentation
         logits = logits.masked_select((1 - torch.eye(n).to(logits.device)).bool()).view(n, n - 1)
         exp_logits = exp_logits.masked_select((1 - torch.eye(n).to(logits.device)).bool()).view(n, n - 1)
         label_diffs = label_diffs.masked_select((1 - torch.eye(n).to(logits.device)).bool()).view(n, n - 1)

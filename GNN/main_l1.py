@@ -5,43 +5,113 @@ import sys
 import logging
 import torch
 import time
+import math
 from model import GCNMLP, ModelArgs
 from torch_geometric.loader import DataLoader
 from dataset import *
 from utils import *
+import wandb
+import yaml
 
 print = logging.info
-warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
+# These warnings are unnecessarily verbose
+warnings.filterwarnings('ignore',
+                        category=UserWarning,
+                        message='TypedStorage is deprecated')
+
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
 
-    parser.add_argument('--print_freq', type=int, default=10, help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50, help='save frequency')
-    parser.add_argument('--save_curr_freq', type=int, default=1, help='save curr last frequency')
+    # Logging and checkpoint options
+    parser.add_argument('--print_freq',
+                        type=int,
+                        default=10,
+                        help='print frequency')
+    parser.add_argument('--save_freq',
+                        type=int,
+                        default=50,
+                        help='save frequency')
+    parser.add_argument('--save_curr_freq',
+                        type=int,
+                        default=1,
+                        help='save curr last frequency')
 
-    parser.add_argument('--batch_size', type=int, default=256, help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=16, help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=400, help='number of training epochs')
-    parser.add_argument('--learning_rate', type=float, default=0.2, help='learning rate')
-    parser.add_argument('--lr_decay_rate', type=float, default=0.1, help='decay rate for learning rate')
-    parser.add_argument('--weight_decay', type=float, default=1e-4, help='weight decay')
+    # Optimization options
+    parser.add_argument('--batch_size',
+                        type=int,
+                        default=256,
+                        help='batch_size')
+    parser.add_argument('--num_workers',
+                        type=int,
+                        default=16,
+                        help='num of workers to use')
+    parser.add_argument('--epochs',
+                        type=int,
+                        default=400,
+                        help='number of training epochs')
+    parser.add_argument('--learning_rate',
+                        type=float,
+                        default=5e-4,
+                        help='learning rate')
+    parser.add_argument('--lr_decay_rate',
+                        type=float,
+                        default=0.0,
+                        help='decay rate for learning rate')
+    parser.add_argument('--weight_decay',
+                        type=float,
+                        default=1e-6,
+                        help='weight decay')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
-    parser.add_argument('--trial', type=str, default='0', help='id for recording multiple runs')
+    parser.add_argument('--trial',
+                        type=str,
+                        default='0',
+                        help='id for recording multiple runs')
 
-    parser.add_argument('--in_channels', type=int, default=9, help='input channels')
-    parser.add_argument('--out_channels', type=int, default=128, help='output channels')
-    parser.add_argument('--hidden_channels', type=int, default=64, help='hidden channels')
-    parser.add_argument('--num_layers', type=int, default=3, help='number of layers')
-    parser.add_argument('--dropout', type=float, default=0.5, help='dropout rate')
+    # Model options
+    parser.add_argument('--in_channels',
+                        type=int,
+                        default=9,
+                        help='input channels')
+    parser.add_argument('--out_channels',
+                        type=int,
+                        default=100,
+                        help='output channels')
+    parser.add_argument('--hidden_channels',
+                        type=int,
+                        default=64,
+                        help='hidden channels')
+    parser.add_argument('--num_layers',
+                        type=int,
+                        default=5,
+                        help='number of layers')
+    parser.add_argument('--dropout',
+                        type=float,
+                        default=0.0,
+                        help='dropout rate')
 
-    parser.add_argument('--data_folder', type=str, default='./data', help='path to custom dataset')
-    parser.add_argument('--dataset', type=str, default='ESOL', choices=['ESOL'], help='dataset')
-    parser.add_argument('--resume', type=str, default='', help='resume ckpt path')
-    parser.add_argument('--aug', type=str, default='crop,flip,color,grayscale', help='augmentations')
+    # Other options
+    parser.add_argument('--data_folder',
+                        type=str,
+                        default='./data',
+                        help='path to custom dataset')
+    parser.add_argument('--dataset',
+                        type=str,
+                        default='ESOL',
+                        choices=['ESOL'],
+                        help='dataset')
+    parser.add_argument('--resume',
+                        type=str,
+                        default='',
+                        help='resume ckpt path')
+    parser.add_argument('--aug',
+                        type=str,
+                        default='crop,flip,color,grayscale',
+                        help='augmentations')
 
     opt = parser.parse_args()
 
+    # set the path according to the environment
     opt.model_path = './save/{}_models'.format(opt.dataset)
     opt.model_name = 'L1_{}_GNN_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_aug_{}_trial_{}'. \
         format(opt.dataset, opt.epochs, opt.learning_rate, opt.lr_decay_rate, opt.weight_decay, opt.momentum,
@@ -53,45 +123,64 @@ def parse_option():
     if not os.path.isdir(opt.save_folder):
         os.makedirs(opt.save_folder)
     else:
-        print('WARNING: folder exist.')
+        print('WARNING: folder already exists.')
 
+    # Create a logging object
     logging.root.handlers = []
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(message)s",
-        handlers=[
-            logging.FileHandler(os.path.join(opt.save_folder, 'training.log')),
-            logging.StreamHandler()
-        ])
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s | %(message)s",
+                        handlers=[
+                            logging.FileHandler(
+                                os.path.join(opt.save_folder, 'training.log')),
+                            logging.StreamHandler()
+                        ])
 
     print(f"Model name: {opt.model_name}")
     print(f"Options: {opt}")
 
     return opt
 
+
 def set_loader(opt):
-    # Cannot understand FIXME
-    train_dataset = globals()[opt.dataset](data_folder=opt.data_folder, split='train')
-    val_dataset = globals()[opt.dataset](data_folder=opt.data_folder, split='valid')
-    test_dataset = globals()[opt.dataset](data_folder=opt.data_folder, split='test')
+    '''
+    Load the dataset and return data loaders
+    '''
+    train_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
+                                           split='train')
+    val_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
+                                         split='valid')
+    test_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
+                                          split='test')
 
     print(f'Train set size: {train_dataset.__len__()}\t'
           f'Val set size: {val_dataset.__len__()}\t'
           f'Test set size: {test_dataset.__len__()}')
 
     train_loader = DataLoader(
-        train_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers, pin_memory=True, 
+        train_dataset,
+        batch_size=opt.batch_size,
+        shuffle=True,
+        num_workers=opt.num_workers,
+        pin_memory=True,
     )
-    val_loader = DataLoader(
-        val_dataset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, pin_memory=True
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, pin_memory=True
-    ) #torch.utils.data.
+    val_loader = DataLoader(val_dataset,
+                            batch_size=opt.batch_size,
+                            shuffle=False,
+                            num_workers=opt.num_workers,
+                            pin_memory=True)
+    test_loader = DataLoader(test_dataset,
+                             batch_size=opt.batch_size,
+                             shuffle=False,
+                             num_workers=opt.num_workers,
+                             pin_memory=True)
 
     return train_loader, val_loader, test_loader
 
-def set_model(opt):
+
+def set_model_and_loss(opt):
+    '''
+    Load the model, loss function and move to GPU
+    '''
     model_args = ModelArgs()
     model_args.in_channels = opt.in_channels
     model_args.out_channels = opt.out_channels
@@ -110,7 +199,11 @@ def set_model(opt):
 
     return model, criterion
 
+
 def train(train_loader, model, criterion, optimizer, epoch, opt):
+    '''
+    One epoch trainer function
+    '''
     model.train()
 
     batch_time = AverageMeter()
@@ -148,15 +241,25 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             )
             print(to_print)
             sys.stdout.flush()
+    wandb.log(
+        {
+            'train_loss': losses.avg,
+        },
+        step=epoch)
+
 
 def validate(val_loader, model):
+    '''
+    Calculate the validation loss
+    '''
     model.eval()
 
     losses = AverageMeter()
+    rmse = AverageMeter()
     criterion_l1 = torch.nn.L1Loss()
 
     with torch.no_grad():
-        for idx, (mol, labels) in enumerate(val_loader):
+        for _, (mol, labels) in enumerate(val_loader):
             mol = mol.cuda()
             labels = labels.cuda()
             bsz = labels.shape[0]
@@ -165,17 +268,30 @@ def validate(val_loader, model):
 
             loss_l1 = criterion_l1(output, labels)
             losses.update(loss_l1.item(), bsz)
+            rmse.update(loss_l1.item()**2, bsz)
 
-    return losses.avg
+    return losses.avg, math.sqrt(rmse.avg)
+
 
 def main():
     opt = parse_option()
+    
+    # Load API key
+    with open('../.secrets/api.yaml', 'r') as f:
+        secrets = yaml.safe_load(f)
+        API_key = secrets['api_key']
+
+    # Wandb login
+    wandb.login(key=API_key)
+    
+    # Setup wandb
+    wandb.init(project='dl-project', config=opt)
 
     # build data loader
     train_loader, val_loader, test_loader = set_loader(opt)
 
     # build model and criterion
-    model, criterion = set_model(opt)
+    model, criterion = set_model_and_loss(opt)
 
     # build optimizer
     optimizer = set_optimizer(opt, model)
@@ -198,8 +314,15 @@ def main():
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, opt)
 
-        valid_error = validate(val_loader, model)
+        valid_error, valid_rmse, valid_mae = validate(val_loader, model)
         print('Val L1 error: {:.3f}'.format(valid_error))
+        print('Val RMSE error: {:.3f}'.format(valid_rmse))
+        wandb.log(
+            {
+                'valid_loss': valid_error,
+                'valid_rmse': valid_rmse
+            },
+            step=epoch)
 
         is_best = valid_error < best_error
         best_error = min(valid_error, best_error)
@@ -211,25 +334,31 @@ def main():
             save_model(model, optimizer, opt, epoch, save_file)
 
         if epoch % opt.save_curr_freq == 0:
-            save_file = os.path.join(
-                opt.save_folder, 'curr_last.pth'.format(epoch=epoch))
+            save_file = os.path.join(opt.save_folder,
+                                     'curr_last.pth'.format(epoch=epoch))
             save_model(model, optimizer, opt, epoch, save_file)
 
         if is_best:
-            torch.save({
-                'epoch': epoch,
-                'model': model.state_dict(),
-                'best_error': best_error
-            }, save_file_best)
+            torch.save(
+                {
+                    'epoch': epoch,
+                    'model': model.state_dict(),
+                    'best_error': best_error
+                }, save_file_best)
 
     print("=" * 120)
     print("Test best model on test set...")
     checkpoint = torch.load(save_file_best)
     model.load_state_dict(checkpoint['model'])
-    print(f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}")
-    test_loss = validate(test_loader, model)
-    to_print = 'Test L1 error: {:.3f}'.format(test_loss)
-    print(to_print)
+    print(
+        f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}"
+    )
+    test_loss, test_rmse, test_mae = validate(test_loader, model)
+    print(f"Test L1 error: {test_loss:.3f}")
+    print(f"Test RMSE error: {test_rmse:.3f}")
+    
+    # Finish wandb run
+    wandb.finish()
 
 
 if __name__ == '__main__':

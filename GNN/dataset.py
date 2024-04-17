@@ -7,10 +7,15 @@ from torch.utils.data import Dataset
 
 class ESOL(Dataset):
 
-    def __init__(self, data_folder, split, clip=False):
+    def __init__(self, data_folder, split):
+        '''
+        data_folder: str, path to the folder containing the dataset
+        split: str, 'train', 'valid', or 'test'
 
+        Creates a dataset object for the ESOL dataset
+        '''
         super(ESOL, self).__init__()
-        df = pd.read_csv(f'./GNN/data/esol.csv')
+        df = pd.read_csv(f'./data/esol.csv')
         self.df = df[df['split'] == split]
         self.split = split
         self.data_folder = data_folder
@@ -28,9 +33,3 @@ class ESOL(Dataset):
             mol = pickle.load(f)
         label = self.df.iloc[idx]["solubility"]
         return mol, torch.tensor(label, dtype=torch.float32)
-
-# if __name__ == '__main__':
-
-#     esol = ESOL('data/')
-#     mol0, lbl0 = esol[1]
-#     print(mol0)
