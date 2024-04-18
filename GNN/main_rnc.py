@@ -131,6 +131,8 @@ def parse_option():  # opt.momemntum FIXME
         os.makedirs(opt.save_folder)
     else:
         print('WARNING: folder exist.')
+        
+    opt.experiment_name = "RnC-GNNEncoder"
 
     logging.root.handlers = []
     logging.basicConfig(level=logging.INFO,

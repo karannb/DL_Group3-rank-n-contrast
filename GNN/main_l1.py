@@ -124,6 +124,8 @@ def parse_option():
         os.makedirs(opt.save_folder)
     else:
         print('WARNING: folder already exists.')
+        
+    opt.experiment_name = "L1-GNNMLP"
 
     # Create a logging object
     logging.root.handlers = []

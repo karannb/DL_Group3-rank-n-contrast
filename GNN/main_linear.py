@@ -97,6 +97,8 @@ def parse_option():
     if len(opt.resume):
         opt.model_name = opt.resume.split('/')[-1][:-len('_last.pth')]
     opt.save_folder = '/'.join(opt.ckpt.split('/')[:-1])
+    
+    opt.experiment_name = "L1-GNNFull"
 
     logging.root.handlers = []
     logging.basicConfig(level=logging.INFO,
