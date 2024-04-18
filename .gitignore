@@ -5,6 +5,10 @@ save/
 .secrets/
 wandb/
 
+# Logs
+*.err
+*.out
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

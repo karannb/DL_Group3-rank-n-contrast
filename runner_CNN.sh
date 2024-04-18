@@ -9,6 +9,6 @@
 
 export CUDA_VISIBLE_DEVICES=1
 
-cd GNN/
+cd CNN/
 
 python3 CNN/main_l1.py --data_folder ./CNN/data
