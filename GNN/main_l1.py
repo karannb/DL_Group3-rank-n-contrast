@@ -268,7 +268,7 @@ def validate(val_loader, model):
 
             loss_l1 = criterion_l1(output, labels)
             losses.update(loss_l1.item(), bsz)
-            rmse.update(loss_l1.item()**2, bsz)
+            rmse.update(((output - labels)**2).sum().item(), bsz)
 
     return losses.avg, math.sqrt(rmse.avg)
 
@@ -353,7 +353,7 @@ def main():
     print(
         f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}"
     )
-    test_loss, test_rmse, test_mae = validate(test_loader, model)
+    test_loss, test_rmse = validate(test_loader, model)
     print(f"Test L1 error: {test_loss:.3f}")
     print(f"Test RMSE error: {test_rmse:.3f}")
 

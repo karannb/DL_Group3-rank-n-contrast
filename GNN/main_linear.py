@@ -4,12 +4,13 @@ import sys
 import logging
 import torch
 import time
-from model import Encoder
+from model import GCNEncoder, ModelArgs
 from dataset import *
 from utils import *
 import wandb
 import yaml
 import math
+from torch_geometric.loader import DataLoader
 
 print = logging.info
 
@@ -28,7 +29,7 @@ def parse_option():
 
     parser.add_argument('--batch_size',
                         type=int,
-                        default=64,
+                        default=256,
                         help='batch_size')
     parser.add_argument('--num_workers',
                         type=int,
@@ -40,7 +41,7 @@ def parse_option():
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
-                        default=0.05,
+                        default=5e-4,
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
@@ -62,13 +63,9 @@ def parse_option():
                         help='path to custom dataset')
     parser.add_argument('--dataset',
                         type=str,
-                        default='AgeDB',
-                        choices=['AgeDB'],
+                        default='ESOL',
+                        choices=['ESOL'],
                         help='dataset')
-    parser.add_argument('--model',
-                        type=str,
-                        default='resnet18',
-                        choices=['resnet18', 'resnet50'])
     parser.add_argument('--resume',
                         type=str,
                         default='',
@@ -88,8 +85,15 @@ def parse_option():
                         default='L1',
                         choices=['L1', 'L2', 'huber'],
                         help='loss function to train')
+    
+    parser.add_argument('--freeze_encoder',
+                        default=False,
+                        action='store_true',
+                        help='whether or not to freeze the encoder trained with RnC.')
 
     opt = parser.parse_args()
+    
+    assert opt.ckpt != '', "Please provide a checkpoint for the model trained using RnC loss."
 
     opt.model_name = 'Regressor_{}_{}_ep_{}_lr_{}_d_{}_wd_{}_mmt_{}_bsz_{}_trial_{}'. \
         format(opt.loss, opt.dataset, opt.epochs, opt.learning_rate, opt.lr_decay_rate,
@@ -121,7 +125,7 @@ def set_loader(opt):
     train_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
                                            split='train')
     val_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
-                                         split='val')
+                                         split='valid')
     test_dataset = globals()[opt.dataset](data_folder=opt.data_folder,
                                           split='test')
 
@@ -129,28 +133,35 @@ def set_loader(opt):
           f'Val set size: {val_dataset.__len__()}\t'
           f'Test set size: {test_dataset.__len__()}')
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=opt.batch_size,
-                                               shuffle=True,
-                                               num_workers=opt.num_workers,
-                                               pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=opt.batch_size,
-                                             shuffle=False,
-                                             num_workers=opt.num_workers,
-                                             pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset,
-                                              batch_size=opt.batch_size,
-                                              shuffle=False,
-                                              num_workers=opt.num_workers,
-                                              pin_memory=True)
+    train_loader = DataLoader(train_dataset,
+                            batch_size=opt.batch_size,
+                            shuffle=True,
+                            num_workers=opt.num_workers,
+                            pin_memory=True)
+    val_loader = DataLoader(val_dataset,
+                            batch_size=opt.batch_size,
+                            shuffle=False,
+                            num_workers=opt.num_workers,
+                            pin_memory=True)
+    test_loader = DataLoader(test_dataset,
+                            batch_size=opt.batch_size,
+                            shuffle=False,
+                            num_workers=opt.num_workers,
+                            pin_memory=True)
 
     return train_loader, val_loader, test_loader
 
 
 def set_model(opt):
-    model = Encoder(name=opt.model)
+    model_args = ModelArgs() # HARDCODED FIXME
+    model_args.in_channels = 9
+    model_args.out_channels = 100
+    model_args.hidden_channels = 64
+    model_args.num_layers = 5
+    model_args.dropout = 0.0
+    model = GCNEncoder(model_args)
     if opt.freeze_encoder:
+        print("Freezing the encoder module.")
         for param in model.parameters():
             param.requires_grad = False
     if opt.loss == 'L1':
@@ -195,17 +206,18 @@ def train(train_loader, model, regressor, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
+    for idx, (mol, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
-
-        images = images.cuda(non_blocking=True)
-        labels = labels.cuda(non_blocking=True)
+        
+        if torch.cuda.is_available():
+            mol = mol.cuda(non_blocking=True)
+            labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
 
         with torch.no_grad():
-            features = model(images)
+            features = model(mol)
 
-        output = regressor(features.detach())
+        output = regressor(features.detach()).squeeze(1)
         loss = criterion(output, labels)
         losses.update(loss.item(), bsz)
 
@@ -248,17 +260,17 @@ def validate(val_loader, model, regressor, opt):
 
     rmse = AverageMeter()
     with torch.no_grad():
-        for idx, (images, labels) in enumerate(val_loader):
-            images = images.cuda()
+        for idx, (mol, labels) in enumerate(val_loader):
+            mol = mol.cuda()
             labels = labels.cuda()
             bsz = labels.shape[0]
 
-            features = model(images)
-            output = regressor(features)
+            features = model(mol)
+            output = regressor(features).squeeze(1)
 
             loss = criterion(output, labels)
             losses.update(loss.item(), bsz)
-            rmse.update((output - labels)**2, bsz)
+            rmse.update(((output - labels)**2).sum().item(), bsz)
 
     return losses.avg, math.sqrt(rmse.avg)
 
@@ -270,12 +282,6 @@ def main():
     with open('../.secrets/api.yaml', 'r') as f:
         secrets = yaml.safe_load(f)
         API_key = secrets['api_key']
-
-    # Wandb login
-    wandb.login(key=API_key)
-
-    # Start wandb run
-    wandb.init(project="dl-project", config=opt)
 
     # build data loader
     train_loader, val_loader, test_loader = set_loader(opt)
@@ -299,6 +305,12 @@ def main():
         start_epoch = ckpt_state['epoch'] + 1
         best_error = ckpt_state['best_error']
         print(f"<=== Epoch [{ckpt_state['epoch']}] Resumed from {opt.resume}!")
+        
+    # Wandb login
+    wandb.login(key=API_key)
+
+    # Start wandb run
+    wandb.init(project="dl-project", config=opt)
 
     # training routine
     for epoch in range(start_epoch, opt.epochs + 1):
@@ -308,7 +320,8 @@ def main():
         train(train_loader, model, regressor, criterion, optimizer, epoch, opt)
 
         valid_error, valid_rmse = validate(val_loader, model, regressor, opt)
-        print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
+        print('Val error: {:.7f}'.format(valid_error))
+        print('Val error: {:.7f}'.format(valid_rmse))
 
         wandb.log({
             'valid_loss': valid_error,
@@ -342,9 +355,9 @@ def main():
     print(
         f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}"
     )
-    test_loss = validate(test_loader, model, regressor, opt)
-    to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
-    print(to_print)
+    test_loss, test_rmse = validate(test_loader, model, regressor, opt)
+    print(f"Test L1 error: {test_loss:.3f}")
+    print(f"Test RMSE error: {test_rmse:.3f}")
 
     # Finish wandb run
     wandb.finish()
