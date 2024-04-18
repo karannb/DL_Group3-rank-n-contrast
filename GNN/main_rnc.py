@@ -25,7 +25,7 @@ def parse_option():  # opt.momemntum FIXME
     # Logging options
     parser.add_argument('--print_freq',
                         type=int,
-                        default=1,
+                        default=2,
                         help='print frequency')
     parser.add_argument('--save_freq',
                         type=int,

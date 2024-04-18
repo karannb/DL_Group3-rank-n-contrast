@@ -19,7 +19,7 @@ def parse_option():
 
     parser.add_argument('--print_freq',
                         type=int,
-                        default=10,
+                        default=2,
                         help='print frequency')
     parser.add_argument('--save_freq',
                         type=int,
