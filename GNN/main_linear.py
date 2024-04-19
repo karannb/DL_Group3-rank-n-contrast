@@ -37,7 +37,7 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs',
                         type=int,
-                        default=100,
+                        default=400,
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
@@ -320,8 +320,8 @@ def main():
         train(train_loader, model, regressor, criterion, optimizer, epoch, opt)
 
         valid_error, valid_rmse = validate(val_loader, model, regressor, opt)
-        print('Val error: {:.7f}'.format(valid_error))
-        print('Val error: {:.7f}'.format(valid_rmse))
+        print('Val error: {:.3f}'.format(valid_error))
+        print('Val RMSE: {:.3f}'.format(valid_rmse))
 
         wandb.log({
             'valid_loss': valid_error,
