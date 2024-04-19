@@ -267,8 +267,7 @@ def validate(val_loader, model, opt):
             mae.update(abs(output - labels).mean().item(), bsz)
             rmse.update(((output - labels)**2).mean().item(), bsz)
 
-    return losses.avg, mae.update(abs(output - labels).mean().item(), bsz)
-            rmse.update(((output - labels)**2).mean().item(), bsz)
+    return losses.avg, math.sqrt(rmse.avg), mae.avg, rmse.avg
 
 
 def main():

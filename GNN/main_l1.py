@@ -52,7 +52,7 @@ def parse_option():
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
-                        default=8e-4,
+                        default=1e-2,
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
