@@ -45,11 +45,11 @@ def parse_option():
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
-                        default=0.2,
+                        default=0.0,
                         help='decay rate for learning rate')
     parser.add_argument('--weight_decay',
                         type=float,
-                        default=0,
+                        default=1e-6,
                         help='weight decay')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--trial',
