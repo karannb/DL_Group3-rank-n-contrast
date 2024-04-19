@@ -51,11 +51,11 @@ def parse_option():  # opt.momemntum FIXME
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
-                        default=4e-5,
+                        default=1e-2,
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
-                        default=0,
+                        default=0.01,
                         help='decay rate for learning rate')
     parser.add_argument('--weight_decay',
                         type=float,

@@ -72,13 +72,18 @@ class GCNMLP(GCNEncoder):
     
     def __init__(self, args : ModelArgs):
         super(GCNMLP, self).__init__(args)
-        self.mlp = nn.Sequential(nn.Linear(2*args.out_channels, args.out_channels),
-                                nn.ReLU(),
-                                nn.Linear(args.out_channels, 512),
-                                nn.ReLU(),
-                                nn.Linear(512, 1))
+        self.mlp = nn.Sequential(nn.Linear(2*args.out_channels, 1)) # reduced MLP
 
     def forward(self, mol):
         x = super(GCNMLP, self).forward(mol)
         x = self.mlp(x)
         return x
+    
+'''
+EXTRA - 
+args.out_channels),
+nn.ReLU(),
+nn.Linear(args.out_channels, 512),
+nn.ReLU(),
+nn.Linear(512, 
+'''

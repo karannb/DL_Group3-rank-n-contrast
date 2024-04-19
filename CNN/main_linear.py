@@ -185,8 +185,8 @@ def validate(val_loader, model, regressor, opt):
     else:
         raise ValueError(f"Loss function {opt.loss} not supported!")
     
-    
-    
+    rmse = AverageMeter()
+    mae = AverageMeter()
     with torch.no_grad():
         for idx, (images, labels) in enumerate(val_loader):
             images = images.cuda()
@@ -198,8 +198,10 @@ def validate(val_loader, model, regressor, opt):
 
             loss = criterion(output, labels)
             losses.update(loss.item(), bsz)
+            mae.update(abs(output - labels).mean().item(), bsz)
+            rmse.update(((output - labels)**2).mean().item(), bsz)
 
-    return losses.avg
+    return losses.avg, math.sqrt(rmse.avg), mae.avg, rmse.avg
 
 
 def main():
@@ -248,8 +250,11 @@ def main():
         # train for one epoch
         train(train_loader, model, regressor, criterion, optimizer, epoch, opt)
 
-        valid_error = validate(val_loader, model, regressor, opt)
+        valid_error, valid_rmse, valid_mae, valid_mse = validate(val_loader, model, regressor, opt)
         print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
+        print('Val RMSE: {:.3f}'.format(valid_rmse))
+        print('Val MAE: {:.3f}'.format(valid_mae))
+        print('Val MSE: {:.3f}'.format(valid_mse))
         
         wandb.log(
             {
@@ -279,9 +284,12 @@ def main():
     checkpoint = torch.load(save_file_best)
     regressor.load_state_dict(checkpoint['state_dict'])
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}")
-    test_loss = validate(test_loader, model, regressor,opt)
+    test_loss, test_rmse, test_mae, test_mse = validate(test_loader, model, regressor,opt)
     to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
     print(to_print)
+    print('Test RMSE: {:.3f}'.format(test_rmse))
+    print('Test MAE: {:.3f}'.format(test_mae))
+    print('Test MSE: {:.3f}'.format(test_mse))
 
     # Finish wandb run
     wandb.finish()

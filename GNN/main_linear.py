@@ -41,15 +41,15 @@ def parse_option():
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
-                        default=8e-4,
+                        default=1e-3,
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
-                        default=0.0,
+                        default=0.1,
                         help='decay rate for learning rate')
     parser.add_argument('--weight_decay',
                         type=float,
-                        default=1e-6,
+                        default=0,
                         help='weight decay')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--trial',
@@ -267,7 +267,8 @@ def validate(val_loader, model, opt):
             mae.update(abs(output - labels).mean().item(), bsz)
             rmse.update(((output - labels)**2).mean().item(), bsz)
 
-    return losses.avg, math.sqrt(rmse.avg), mae.avg, rmse.avg
+    return losses.avg, mae.update(abs(output - labels).mean().item(), bsz)
+            rmse.update(((output - labels)**2).mean().item(), bsz)
 
 
 def main():
