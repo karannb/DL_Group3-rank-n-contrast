@@ -40,7 +40,7 @@ def parse_option():
     # Optimization options
     parser.add_argument('--batch_size',
                         type=int,
-                        default=256,
+                        default=128,
                         help='batch_size')
     parser.add_argument('--num_workers',
                         type=int,
@@ -48,11 +48,11 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs',
                         type=int,
-                        default=400,
+                        default=300,
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,
-                        default=5e-4,
+                        default=8e-4,
                         help='learning rate')
     parser.add_argument('--lr_decay_rate',
                         type=float,
@@ -256,6 +256,7 @@ def validate(val_loader, model):
 
     losses = AverageMeter()
     rmse = AverageMeter()
+    mae = AverageMeter()
     criterion_l1 = torch.nn.L1Loss()
 
     with torch.no_grad():
@@ -268,9 +269,10 @@ def validate(val_loader, model):
 
             loss_l1 = criterion_l1(output, labels)
             losses.update(loss_l1.item(), bsz)
-            rmse.update(((output - labels)**2).sum().item(), bsz)
+            mae.update(abs(output - labels).mean().item(), bsz)
+            rmse.update(((output - labels)**2).mean().item(), bsz)
 
-    return losses.avg, math.sqrt(rmse.avg)
+    return losses.avg, math.sqrt(rmse.avg), mae.avg, rmse.avg
 
 
 def main():
@@ -315,12 +317,14 @@ def main():
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, opt)
 
-        valid_error, valid_rmse = validate(val_loader, model)
-        print('Val L1 error: {:.3f}'.format(valid_error))
-        print('Val RMSE error: {:.3f}'.format(valid_rmse))
+        valid_error, valid_rmse, valid_mae, valid_mse = validate(val_loader, model)
+        print('Val RMSE: {:.3f}'.format(valid_rmse))
+        print('Val MAE: {:.3f}'.format(valid_mae))
+        print('Val MSE: {:.3f}'.format(valid_mse))
         wandb.log({
-            'valid_loss': valid_error,
-            'valid_rmse': valid_rmse
+            'valid_rmse': valid_rmse,
+            'valid_mae': valid_mae,
+            'valid_mse': valid_mse
         },
                   step=epoch)
 
@@ -353,9 +357,10 @@ def main():
     print(
         f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}"
     )
-    test_loss, test_rmse = validate(test_loader, model)
-    print(f"Test L1 error: {test_loss:.3f}")
-    print(f"Test RMSE error: {test_rmse:.3f}")
+    test_loss, test_rmse, test_mae, test_mse = validate(test_loader, model)
+    print(f"Test RMSE: {test_rmse:.3f}")
+    print(f"Test MAE: {test_mae:.3f}")
+    print(f"Test MSE: {test_mse:.3f}")
 
     # Finish wandb run
     wandb.finish()

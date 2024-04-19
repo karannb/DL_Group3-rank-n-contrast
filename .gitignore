@@ -5,6 +5,9 @@ save/
 .secrets/
 wandb/
 
+# jobs
+*.sh
+
 # Logs
 *.err
 *.out
