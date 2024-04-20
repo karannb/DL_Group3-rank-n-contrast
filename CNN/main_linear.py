@@ -185,7 +185,6 @@ def validate(val_loader, model, regressor, opt):
     else:
         raise ValueError(f"Loss function {opt.loss} not supported!")
     
-    rmse = AverageMeter()
     mae = AverageMeter()
     with torch.no_grad():
         for idx, (images, labels) in enumerate(val_loader):
@@ -199,9 +198,8 @@ def validate(val_loader, model, regressor, opt):
             loss = criterion(output, labels)
             losses.update(loss.item(), bsz)
             mae.update(abs(output - labels).mean().item(), bsz)
-            rmse.update(((output - labels)**2).mean().item(), bsz)
 
-    return losses.avg, math.sqrt(rmse.avg), mae.avg, rmse.avg
+    return losses.avg, mae.avg
 
 
 def main():
@@ -209,14 +207,6 @@ def main():
     
     # set the mannual seed
     seed_all(42)
-    
-    # Load API key
-    with open('../.secrets/api.yaml', 'r') as f:
-        secrets = yaml.safe_load(f)
-        API_key = secrets['api_key']
-
-    # Wandb login
-    wandb.login(key=API_key)
     
     # Setup wandb
     wandb.init(project='dl-project', config=opt)
@@ -232,7 +222,7 @@ def main():
 
     save_file_best = os.path.join(opt.save_folder, f"{opt.model_name}_best.pth")
     save_file_last = os.path.join(opt.save_folder, f"{opt.model_name}_last.pth")
-    best_error = 1e5
+    best_mae = 1e6
 
     start_epoch = 1
     if len(opt.resume):
@@ -250,46 +240,43 @@ def main():
         # train for one epoch
         train(train_loader, model, regressor, criterion, optimizer, epoch, opt)
 
-        valid_error, valid_rmse, valid_mae, valid_mse = validate(val_loader, model, regressor, opt)
+        valid_error, valid_mae = validate(val_loader, model, regressor, opt)
         print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
-        print('Val RMSE: {:.3f}'.format(valid_rmse))
         print('Val MAE: {:.3f}'.format(valid_mae))
-        print('Val MSE: {:.3f}'.format(valid_mse))
         
         wandb.log(
             {
                 'valid_loss': valid_error,
+                'valid_mae': valid_mae,
             },
             step=epoch)
 
-        is_best = valid_error < best_error
-        best_error = min(valid_error, best_error)
-        print(f"Best Error: {best_error:.3f}")
+        is_best = valid_mae < best_mae
+        best_mae = min(valid_mae, best_mae)
+        print(f"Best Mae: {best_mae:.3f}")
 
         if is_best:
             torch.save({
                 'epoch': epoch,
                 'state_dict': regressor.state_dict(),
-                'best_error': best_error
+                'best_mae': best_mae
             }, save_file_best)
 
         torch.save({
             'epoch': epoch,
             'state_dict': regressor.state_dict(),
-            'last_error': valid_error
+            'last_mae': valid_mae
         }, save_file_last)
 
     print("=" * 120)
     print("Test best model on test set...")
     checkpoint = torch.load(save_file_best)
     regressor.load_state_dict(checkpoint['state_dict'])
-    print(f"Loaded best model, epoch {checkpoint['epoch']}, best val error {checkpoint['best_error']:.3f}")
-    test_loss, test_rmse, test_mae, test_mse = validate(test_loader, model, regressor,opt)
+    print(f"Loaded best model, epoch {checkpoint['epoch']}, best val mae {checkpoint['best_mae']:.3f}")
+    test_loss, test_mae = validate(test_loader, model, regressor,opt)
     to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
     print(to_print)
-    print('Test RMSE: {:.3f}'.format(test_rmse))
     print('Test MAE: {:.3f}'.format(test_mae))
-    print('Test MSE: {:.3f}'.format(test_mse))
 
     # Finish wandb run
     wandb.finish()

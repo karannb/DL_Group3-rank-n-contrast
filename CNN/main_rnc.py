@@ -158,14 +158,6 @@ def main():
     # set the mannual seed
     seed_all(42)
     
-    # Load API key
-    with open('../.secrets/api.yaml', 'r') as f:
-        secrets = yaml.safe_load(f)
-        API_key = secrets['api_key']
-
-    # Wandb login
-    wandb.login(key=API_key)
-    
     # Setup wandb
     wandb.init(project='dl-project', config=opt)
 
