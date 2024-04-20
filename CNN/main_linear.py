@@ -94,7 +94,7 @@ def set_model(opt):
     model = Encoder(name=opt.model)
     if opt.loss == 'L1':
         criterion = torch.nn.L1Loss()
-    elif opt.loss == 'MSE':
+    elif opt.loss == 'L2':
         criterion = torch.nn.MSELoss()
     elif opt.loss == 'huber':
         criterion = torch.nn.SmoothL1Loss()
@@ -178,7 +178,7 @@ def validate(val_loader, model, regressor, opt):
     losses = AverageMeter()
     if opt.loss == 'L1':
         criterion = torch.nn.L1Loss()
-    elif opt.loss == 'MSE':
+    elif opt.loss == 'L2':
         criterion = torch.nn.MSELoss()
     elif opt.loss == 'huber':
         criterion = torch.nn.SmoothL1Loss()
