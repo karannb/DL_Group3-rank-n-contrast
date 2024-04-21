@@ -47,7 +47,7 @@ def parse_option():  # opt.momemntum FIXME
                         help='num of workers to use')
     parser.add_argument('--epochs',
                         type=int,
-                        default=400,
+                        default=800,
                         help='number of training epochs')
     parser.add_argument('--learning_rate',
                         type=float,

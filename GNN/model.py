@@ -9,10 +9,10 @@ from torch_geometric.nn import GINConv, global_add_pool, global_mean_pool
 
 class ModelArgs:
     in_channels = 9
-    out_channels = 128
+    out_channels = 100
     hidden_channels = 64
-    num_layers = 4
-    dropout = 0.5
+    num_layers = 5
+    dropout = 0.0
 
 class Encoder(nn.Module):
 
