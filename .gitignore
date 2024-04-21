@@ -4,6 +4,7 @@ save/
 *temp*
 .secrets/
 wandb/
+mol_plots/
 
 # jobs
 *.sh
