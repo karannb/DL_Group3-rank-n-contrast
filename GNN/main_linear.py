@@ -274,10 +274,6 @@ def main():
     seed_all(42)
     opt = parse_option()
 
-    with open('../.secrets/api.yaml', 'r') as f:
-        secrets = yaml.safe_load(f)
-        API_key = secrets['api_key']
-
     # build data loader
     train_loader, val_loader, test_loader = set_loader(opt)
 
@@ -299,9 +295,6 @@ def main():
         start_epoch = ckpt_state['epoch'] + 1
         best_error = ckpt_state['best_error']
         print(f"<=== Epoch [{ckpt_state['epoch']}] Resumed from {opt.resume}!")
-        
-    # Wandb login
-    wandb.login(key=API_key)
 
     # Start wandb run
     wandb.init(project="dl-project", config=opt)

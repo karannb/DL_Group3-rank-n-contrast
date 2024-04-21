@@ -239,13 +239,6 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 def main():
     seed_all(42)
     opt = parse_option()
-    
-    with open('../.secrets/api.yaml', 'r') as f:
-        secrets = yaml.safe_load(f)
-        API_key = secrets['api_key']
-
-    # Wandb login
-    wandb.login(key=API_key)
 
     # Start wandb run
     wandb.init(project="dl-project", config=opt)
