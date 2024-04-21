@@ -5,6 +5,7 @@
 ### Loss Function
 #### CV task
 The loss function [`RnCLoss`](./loss.py#L34) used for the CV part in [`loss.py`](./loss.py) takes `features` and `labels` as input, return the loss value, and has three hyper-parameters: `temperature`, `label_diff`, and `feature_sim` associated with it.
+
 ```python
 from loss import RnCLoss
 
@@ -81,6 +82,7 @@ A sequence of commands to reporduce our results - (can be done completely on the
     ```
 <br>
 Everything will be by default logged to w&b and so I recommend signing in using (and pasting your API Key)
+
 ```bash
 wandb login
 ```
