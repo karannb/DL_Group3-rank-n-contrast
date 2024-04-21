@@ -111,7 +111,5 @@ python3 main_l1.py --data_folder data/
 # python3 main_linear.py --data_folder data/ --loss [L1(default)/MSE/huber] --ckpt <path> [OPTIONAL] --freeze_encoder, 
 # with output=logs/linear_GNN.out and error=logs/linear_GNN.err
 ```
-
-<br>
 #### Known issues - 
 1. You might not be able to download all PyG dependencies, on a higher python version (> 3.9.19), especially the ones that have a ~cu117~ at the end, **all** experiments can be reproduced without those libraries so feel free to remove them!
