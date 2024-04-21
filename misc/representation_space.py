@@ -4,6 +4,7 @@ from tqdm import tqdm
 from torch_geometric.loader import DataLoader
 
 import umap
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
@@ -43,10 +44,12 @@ def plot_representation_space(normal_model,
     
     normal_representation_space = []
     rnc_representation_space = []
+    labels = []
     with torch.no_grad():
-        for (mol, _) in tqdm(data_loader):
+        for (mol, targets) in tqdm(data_loader):
             normal_representation_space.append(normal_model(mol).numpy())
             rnc_representation_space.append(rnc_model(mol).numpy())
+            labels.append(targets.numpy().ravel())
     
     normal_representation_space = np.concatenate(normal_representation_space, axis=0)
     rnc_representation_space = np.concatenate(rnc_representation_space, axis=0)
@@ -57,10 +60,11 @@ def plot_representation_space(normal_model,
     
     # Plot subplots and save
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    axes[0].scatter(normal_representation_space[:, 0], normal_representation_space[:, 1])
+    axes[0].scatter(normal_representation_space[:, 0], normal_representation_space[:, 1], c=labels)
     axes[0].set_title('Normal GNN')
-    axes[1].scatter(rnc_representation_space[:, 0], rnc_representation_space[:, 1])
+    cur_plot = axes[1].scatter(rnc_representation_space[:, 0], rnc_representation_space[:, 1], c=labels)
     axes[1].set_title('RnC GNN')
+    plt.colorbar(cur_plot)
     plt.savefig(f'misc/mol_plots/representation_space_{split}.png')
     plt.close('all')
     
