@@ -45,9 +45,10 @@ Download AgeDB dataset from [here](https://ibug.doc.ic.ac.uk/resources/agedb/) a
     ```
   to train the regressor.
 
-## Apart from the official reproduction, we have also tried out this loss on a Graph Regression Task, the ESOL (publicly available asa subset of MoleculeNet <a href="https://moleculenet.org/datasets-1">here</a>) dataset. <br>
+### Apart from the official reproduction, we have also tried out this loss on a Graph Regression Task, the ESOL dataset. <br>
+It is publicly available as a subset of MoleculeNet <a href="https://moleculenet.org/datasets-1">here</a>.
 
-#### The detailed results are available <a href="https://docs.google.com/spreadsheets/d/1HBiUqcsvInXPTq7ywI10QNTG04TnSSEAMmGR4vD-u18/edit#gid=1568203868">here</a> with run plots on my wandb account <a href="https://wandb.ai/karannb/dl-project/table?nw=nwuserkarannb">here</a>. A brief summary is below - 
+The detailed results are available <a href="https://docs.google.com/spreadsheets/d/1HBiUqcsvInXPTq7ywI10QNTG04TnSSEAMmGR4vD-u18/edit#gid=1568203868">here</a> with run plots on my wandb account <a href="https://wandb.ai/karannb/dl-project/table?nw=nwuserkarannb">here</a>. A brief summary is below - 
 | Method / Loss | test MAE | test RMSE | test MSE | validation MAE | validation RMSE | validation MSE |
 | :-----------: | :------: | :-------: | :------: | :------------: | :-------------: | :------------: |
 | normal-L1 | 0.247	| 0.326 | 0.106 | **0.224** | 0.325 | 0.106 |
@@ -56,13 +57,12 @@ Download AgeDB dataset from [here](https://ibug.doc.ic.ac.uk/resources/agedb/) a
 | RnC(L2) | 0.266 | 0.342 | 0.117 | 0.276 | 0.366 | 0.134 |
 | RnC(Huber) | 0.242 | 0.326 | 0.106 | 0.245 | **0.317** | **0.101** |
 
-#### A view on the amazing representation space learned by RnC v/s end-to-end L1,
-Training Data
-![train.png](imgs/representation_space_train.png)
-Test Data
-![test.png](imgs/representation_space_test.png)
+A (<a href="https://umap-learn.readthedocs.io/en/latest/">UMAP</a>) view on the amazing representation space learned by RnC v/s end-to-end L1, <br>
+Training Data (**left**), Test Data (**right**)<br>
+<img src="imgs/representation_space_train.png" alt="train data" width="400" height="200"/>
+<img src="imgs/representation_space_test.png" alt="test data" width="400" height="200"/>
 
-#### A sequence of commands to reporduce our results - (can be done completely on the free version of Google CoLab, though you might run into python version issues, some known issues are listed below)
+A sequence of commands to reporduce our results - (can be done completely on the free version of Google CoLab, though you might run into python version issues, some known issues are listed below)<br>
 - First create a directory called "data/" and create a subfolder titled "ESOL", then you can create the preprocessed dataset as
     ```python
     python3 -m GNN.preprocess
@@ -79,12 +79,13 @@ Test Data
     ```python
     python3 -m misc.representation_space
     ```
-
-#### Everything will be by default logged to w&b and so I recommend signing in using (and pasting your API Key)
+<br>
+Everything will be by default logged to w&b and so I recommend signing in using (and pasting your API Key)
 ```bash
 wandb login
 ```
-#### Following is a bash script to run on multiple GPUs or slurm clusters - 
+<br>
+Following is a bash script to run on multiple GPUs or slurm clusters - 
 ```bash
 #!/bin/sh
 
@@ -108,6 +109,6 @@ python3 main_l1.py --data_folder data/
 # python3 main_linear.py --data_folder data/ --loss [L1(default)/MSE/huber] --ckpt <path> [OPTIONAL] --freeze_encoder, 
 # with output=logs/linear_GNN.out and error=logs/linear_GNN.err
 ```
-
+<br>
 #### Known issues - 
 1. You might not be able to download all PyG dependencies, on a higher python version (> 3.9.19), especially the ones that have a ~cu117~ at the end, **all** experiments can be reproduced without those libraries so feel free to remove them!
