@@ -218,6 +218,7 @@ def main():
         print(f"<=== Epoch [{ckpt_state['epoch']}] Resumed from {opt.resume}!")
 
     best_error = 1e5
+    best_mae = 1e5
     save_file_best = os.path.join(opt.save_folder, 'best.pth')
 
     # training routine
@@ -227,7 +228,7 @@ def main():
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, opt)
 
-        valid_error, valid_mae = validate(val_loader, model, regressor, opt)
+        valid_error, valid_mae = validate(val_loader, model, opt)
         print('Val {} error: {:.3f}'.format(opt.loss, valid_error))
         print('Val MAE: {:.3f}'.format(valid_mae))
         
@@ -266,8 +267,8 @@ def main():
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val mae {checkpoint['best_mae']:.3f}")
     test_loss, test_mae = validate(test_loader, model, opt)
     to_print = 'Test {} error: {:.3f}'.format(opt.loss, test_loss)
+    to_print += '\nTest mae: {:.3f}'.format(test_mae)
     print(to_print)
-    to_print = 'Test mae: {:.3f}'.format(test_mae)
     
     # Finish wandb run
     wandb.finish()
