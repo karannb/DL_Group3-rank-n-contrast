@@ -3,7 +3,7 @@
 #### NOTE : Python version 3.9.x is recommended.
 
 ### Loss Function
-The loss function [`RnCLoss`](./loss.py#L34) used for the CV part in [`loss.py`](./loss.py) takes `features` and `labels` as input, return the loss value, and has three hyper-parameters: `temperature`, `label_diff`, and `feature_sim` associated with it.
+The loss function [`RnCLoss`](./CNN/loss.py#L34) used for the CV part in [`loss.py`](./CNN/loss.py) takes `features` and `labels` as input, return the loss value, and has three hyper-parameters: `temperature`, `label_diff`, and `feature_sim` associated with it.
 
 ```python
 from loss import RnCLoss
@@ -15,12 +15,10 @@ criterion = RnCLoss(temperature=2, label_diff='l1', feature_sim='l2')
 loss = criterion(features, labels) # features: (bs, 2, fear_dim), labels: (bs, label_dim)
 ```
 
-### Running
+### Running the code for the reproducibility section
+Firstly, download the [AgeDB](https://ibug.doc.ic.ac.uk/resources/agedb/) dataset and extract the zip file (we contacted the authors of the AgeDB dataset for the zip password) to folder `./CNN/data`.
 
-#### CV task
-Download the [AgeDB](https://ibug.doc.ic.ac.uk/resources/agedb/) dataset and extract the zip file (we contacted the authors of the AgeDB dataset for the zip password) to folder `./CNN/data`.
-
-Firstly, change to the CNN folder, then run the file as needed. `main_l1.py` trains the model with just L1 loss in a 1-stage setting. `main_rnc.py` trains the encoder with the RnC framework and saves it in `./save`. Finally, run `main_linear.py`, which uses the trained encoder to train the regressor on top in a 2-stage setting.
+Change to the CNN folder, then run the file as needed. `main_l1.py` trains the model with just L1 loss in a 1-stage setting. `main_rnc.py` trains the encoder with the RnC framework and saves it in `./save`. Finally, run `main_linear.py`, which uses the trained encoder to train the regressor on top in a 2-stage setting.
 ```
 cd ./CNN
 
