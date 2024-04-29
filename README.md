@@ -1,50 +1,36 @@
 ## DL assignment: Rank-N-Contrast
 
-#### NOTE : For CV tasks, a higher python version might go through, but to run all experiments, 3.9.x is recommended.
+#### NOTE : Python version 3.9.x is recommended.
 
 ### Loss Function
-#### CV task
 The loss function [`RnCLoss`](./loss.py#L34) used for the CV part in [`loss.py`](./loss.py) takes `features` and `labels` as input, return the loss value, and has three hyper-parameters: `temperature`, `label_diff`, and `feature_sim` associated with it.
 
 ```python
 from loss import RnCLoss
 
-# define loss function with temperature, label difference measure, 
-# and feature similarity measure
+# define loss function with temperature, label difference measure, and feature similarity measure
+# we have kept the following config constant for all the experiments conducted:
+
 criterion = RnCLoss(temperature=2, label_diff='l1', feature_sim='l2')
-
-# features: [bs, 2, feat_dim]
-features = ...
-# labels: [bs, label_dim]
-labels = ...
-
-# compute RnC loss
-loss = criterion(features, labels)
+loss = criterion(features, labels) # features: (bs, 2, fear_dim), labels: (bs, label_dim)
 ```
 
 ### Running
 
 #### CV task
-Download AgeDB dataset from [here](https://ibug.doc.ic.ac.uk/resources/agedb/) and extract the zip file (you may need to contact the authors of AgeDB dataset for the zip password) to folder `./CNN/data`.
+Download the [AgeDB](https://ibug.doc.ic.ac.uk/resources/agedb/) dataset and extract the zip file (we contacted the authors of the AgeDB dataset for the zip password) to folder `./CNN/data`.
 
-- Firstly, change to the CNN folder
-    ```
-    cd ./CNN
-    ```
-- To train the model with the L1 loss, run 
-    ```
-    python main_l1.py
-    ```
-- To train the model with the RnC framework, first run 
-    ```
-    python main_rnc.py
-    ```
-    
-    to train the encoder. The checkpoint of the encoder will be saved to `./save`. Then, run
-    ```
-    python main_linear.py --ckpt <PATH_TO_THE_TRAINED_ENCODER_CHECKPOINT>
-    ```
-  to train the regressor.
+Firstly, change to the CNN folder, then run the file as needed. `main_l1.py` trains the model with just L1 loss in a 1-stage setting. `main_rnc.py` trains the encoder with the RnC framework and saves it in `./save`. Finally, run `main_linear.py`, which uses the trained encoder to train the regressor on top in a 2-stage setting.
+```
+cd ./CNN
+
+python main_l1.py
+
+python main_rnc.py
+
+python main_linear.py --ckpt <your_checkpoint_from_rnc>
+```
+
 
 ### Apart from the official reproduction, we have also tried out this loss on a Graph Regression Task, the ESOL dataset. <br>
 It is publicly available as a subset of MoleculeNet <a href="https://moleculenet.org/datasets-1">here</a>.
@@ -113,3 +99,8 @@ python3 main_l1.py --data_folder data/
 ```
 #### Known issues - 
 1. You might not be able to download all PyG dependencies, on a higher python version (> 3.9.19), especially the ones that have a ~cu117~ at the end, **all** experiments can be reproduced without those libraries so feel free to remove them!
+
+### Thanks
+- [kaiwenzha/Rank-N-Contrast](https://github.com/kaiwenzha/Rank-N-Contrast): Repository code helped in the reproducibility section.
+- [AgeDB](https://ibug.doc.ic.ac.uk/resources/agedb/): Dataset used for CV task in the reproducibility section.
+- [ESOL](https://pubs.acs.org/doi/10.1021/ci034243x): Dataset used for GNN task in the extension on the reproduction.
